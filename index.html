@@ -1,1 +1,178 @@
-
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SHM – มวล-สปริง</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f5f4f0;color:#2c2c2a;font-size:14px}
+h1{font-size:15px;font-weight:600;padding:10px 14px 4px;color:#3c3489}
+.subtitle{font-size:11px;color:#888;padding:0 14px 8px}
+.layout{display:flex;flex-direction:column;gap:10px;padding:10px}
+@media(min-width:700px){
+  .layout{flex-direction:row;align-items:flex-start}
+  .col-left{width:230px;flex-shrink:0}
+  .col-right{flex:1;min-width:0}
+}
+.card{background:#fff;border:1px solid #e0dfd8;border-radius:12px;padding:10px 12px;margin-bottom:0}
+.card-title{font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.param-row{margin-bottom:9px}
+.param-label{font-size:12px;color:#666;display:flex;justify-content:space-between;margin-bottom:3px}
+.param-label strong{color:#2c2c2a;font-weight:600}
+input[type=range]{width:100%;accent-color:#7F77DD;height:22px;cursor:pointer}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#666;margin:4px 0}
+.tog{position:relative;width:36px;height:20px;display:inline-block;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0}
+.tog-sl{position:absolute;inset:0;background:#ccc;border-radius:10px;cursor:pointer;transition:.2s}
+.tog-sl:before{content:"";position:absolute;height:16px;width:16px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.2s}
+input:checked+.tog-sl{background:#7F77DD}
+input:checked+.tog-sl:before{transform:translateX(16px)}
+.const-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.const-cell{background:#f5f4f0;border-radius:8px;padding:6px 4px;text-align:center}
+.const-val{font-size:15px;font-weight:600;color:#2c2c2a}
+.const-lbl{font-size:10px;color:#888}
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.mc{background:#f5f4f0;border-radius:8px;padding:6px 8px}
+.mc-lbl{font-size:10px;color:#888;margin-bottom:2px}
+.mc-val{font-size:14px;font-weight:600}
+.ebar-lbl{font-size:10px;color:#888;display:flex;justify-content:space-between;margin-bottom:3px}
+.ebar-track{height:8px;background:#ebe9e2;border-radius:4px;overflow:hidden;margin-bottom:5px}
+.ebar-fill{height:100%;border-radius:4px}
+.formula{font-size:11px;font-family:monospace;background:#f5f4f0;border-radius:8px;padding:8px 10px;line-height:1.8;color:#555}
+.anim-wrap{border-radius:10px;overflow:hidden;background:#fafaf8;border:1px solid #e0dfd8;margin-bottom:8px}
+.anim-wrap canvas{display:block;width:100%;height:170px}
+.drag-hint{font-size:11px;color:#888;text-align:center;padding:4px 0}
+.graph-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.graph-wrap{background:#fafaf8;border:1px solid #e0dfd8;border-radius:8px;overflow:hidden}
+.graph-label{font-size:10px;color:#888;text-align:center;padding:4px 0 2px;font-weight:500}
+.graph-wrap canvas{display:block;width:100%;height:110px}
+.btn-row{display:flex;gap:8px;margin-bottom:6px}
+.btn{padding:6px 16px;border-radius:8px;border:1px solid #ccc;background:#fff;color:#333;font-size:12px;cursor:pointer}
+.btn.active{background:#7F77DD;color:#fff;border-color:#7F77DD}
+@media(prefers-color-scheme:dark){
+  body{background:#1e1e1c;color:#d4d2c8}
+  .card{background:#2c2c2a;border-color:#444}
+  .const-cell,.mc,.formula,.anim-wrap,.graph-wrap{background:#252523;border-color:#444}
+  .const-cell,.mc{background:#333331}
+  .ebar-track{background:#3a3a38}
+  .btn{background:#2c2c2a;color:#d4d2c8;border-color:#555}
+  .btn.active{background:#7F77DD;color:#fff;border-color:#7F77DD}
+  h1{color:#AFA9EC}
+  .param-label strong{color:#d4d2c8}
+  .const-val{color:#d4d2c8}
+}
+</style>
+</head>
+<body>
+<h1>⚙️ การจำลอง SHM มวล-สปริง พร้อมลากมวลได้</h1>
+<p class="subtitle">ลากมวลสีเขียวเพื่อตั้งตำแหน่งเริ่มต้น แล้วปล่อยให้แกว่ง</p>
+<div class="layout">
+  <div class="col-left" style="display:flex;flex-direction:column;gap:10px">
+    <div class="card">
+      <div class="card-title">พารามิเตอร์</div>
+      <div class="param-row"><div class="param-label">มวล m (kg) <strong id="lbl-m">1.0</strong></div><input type="range" id="sl-m" min="0.1" max="5" step="0.1" value="1.0"></div>
+      <div class="param-row"><div class="param-label">ค่าคงที่สปริง k (N/m) <strong id="lbl-k">10.0</strong></div><input type="range" id="sl-k" min="1" max="50" step="1" value="10"></div>
+      <div class="param-row"><div class="param-label">แอมพลิจูด A (m) <strong id="lbl-a">1.0</strong></div><input type="range" id="sl-a" min="0.1" max="2" step="0.1" value="1.0"></div>
+      <div class="param-row"><div class="param-label">เฟสเริ่มต้น φ (rad) <strong id="lbl-phi">0.00</strong></div><input type="range" id="sl-phi" min="0" max="6.28" step="0.05" value="0"></div>
+      <div class="toggle-row"><span>แรงต้าน (Damping)</span><label class="tog"><input type="checkbox" id="chk-damp"><span class="tog-sl"></span></label></div>
+      <div class="param-row" id="damp-row" style="opacity:.4;pointer-events:none;margin-top:6px"><div class="param-label">ค่า γ <strong id="lbl-gamma">0.5</strong></div><input type="range" id="sl-gamma" min="0.1" max="3" step="0.1" value="0.5"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">ค่าคงที่สำคัญ</div>
+      <div class="const-grid">
+        <div class="const-cell"><div class="const-val" id="val-omega">3.162</div><div class="const-lbl">ω (rad/s)</div></div>
+        <div class="const-cell"><div class="const-val" id="val-T">1.987</div><div class="const-lbl">T (s)</div></div>
+        <div class="const-cell"><div class="const-val" id="val-f">0.503</div><div class="const-lbl">f (Hz)</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">ฟิสิกส์ Real-time</div>
+      <div class="metrics-grid">
+        <div class="mc"><div class="mc-lbl">ตำแหน่ง x (m)</div><div class="mc-val" id="val-x" style="color:#7F77DD">0.000</div></div>
+        <div class="mc"><div class="mc-lbl">ความเร็ว v (m/s)</div><div class="mc-val" id="val-v" style="color:#1D9E75">0.000</div></div>
+        <div class="mc"><div class="mc-lbl">ความเร่ง a (m/s²)</div><div class="mc-val" id="val-acc" style="color:#D85A30">0.000</div></div>
+        <div class="mc"><div class="mc-lbl">แรง F (N)</div><div class="mc-val" id="val-F" style="color:#BA7517">0.000</div></div>
+      </div>
+      <div class="ebar-lbl"><span>พลังงานจลน์ KE</span><strong id="val-KE">0.000 J</strong></div>
+      <div class="ebar-track"><div class="ebar-fill" id="bar-KE" style="width:0%;background:#1D9E75"></div></div>
+      <div class="ebar-lbl"><span>พลังงานศักย์ PE</span><strong id="val-PE">0.000 J</strong></div>
+      <div class="ebar-track"><div class="ebar-fill" id="bar-PE" style="width:0%;background:#7F77DD"></div></div>
+      <div class="ebar-lbl"><span>พลังงานรวม E</span><strong id="val-E">0.000 J</strong></div>
+      <div class="ebar-track"><div class="ebar-fill" id="bar-E" style="width:100%;background:#D85A30"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">สมการ SHM</div>
+      <div class="formula">x(t) = A·cos(ωt + φ)<br>v(t) = −Aω·sin(ωt + φ)<br>a(t) = −ω²·x(t)<br>F = −kx | ω = √(k/m)<br>T = 2π/ω | f = 1/T</div>
+    </div>
+  </div>
+  <div class="col-right" style="display:flex;flex-direction:column;gap:10px">
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>การเคลื่อนที่ของมวล-สปริง</span>
+        <div class="btn-row" style="margin:0">
+          <button class="btn active" id="btn-play" onclick="togglePlay()">หยุด</button>
+          <button class="btn" onclick="resetSim()">รีเซต</button>
+        </div>
+      </div>
+      <div class="drag-hint">👆 แตะค้างที่มวลแล้วลากซ้าย-ขวา</div>
+      <div class="anim-wrap"><canvas id="anim-canvas"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">กราฟ Real-time</div>
+      <div class="graph-row">
+        <div class="graph-wrap"><div class="graph-label">x vs t (เมตร)</div><canvas id="g-x"></canvas></div>
+        <div class="graph-wrap"><div class="graph-label">v vs t (m/s)</div><canvas id="g-v"></canvas></div>
+        <div class="graph-wrap"><div class="graph-label">a vs t (m/s²)</div><canvas id="g-a"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+let m=1,k=10,A=1,phi=0,gamma=0.5,damping=false;
+let posX=1,velX=0,playing=true,lastTS=null;
+let histX=[],histV=[],histA=[],MAX=300;
+let dragging=false,prevDragX=null,prevDragTime=null;
+const isDark=matchMedia('(prefers-color-scheme:dark)').matches;
+const C={wall:isDark?'#555':'#b4b2a9',spring:isDark?'#AFA9EC':'#7F77DD',mass:isDark?'#1D9E75':'#0F6E56',massHL:isDark?'#5DCAA5':'#1D9E75',massDrag:'#D85A30',vel:isDark?'#EF9F27':'#BA7517',force:isDark?'#F09595':'#D85A30',txt:isDark?'#999':'#777',axis:isDark?'#555':'#ccc',bg:isDark?'#252523':'#fafaf8'};
+function omega(){return Math.sqrt(k/m)}
+function period(){return 2*Math.PI/omega()}
+function freq(){return 1/period()}
+const animC=document.getElementById('anim-canvas');
+const actx=animC.getContext('2d');
+const EQ=0.32;
+function resizeCanvas(c){const dpr=window.devicePixelRatio||1;const rect=c.getBoundingClientRect();c.width=rect.width*dpr;c.height=rect.height*dpr;}
+function resizeAll(){resizeCanvas(animC);resizeCanvas(document.getElementById('g-x'));resizeCanvas(document.getElementById('g-v'));resizeCanvas(document.getElementById('g-a'));}
+function physToFrac(x){const maxX=Math.max(A,Math.abs(posX),0.3)*1.15;return EQ+(x/maxX)*(0.92-EQ);}
+function canvasPixToPhys(px){const dpr=window.devicePixelRatio||1;const W=animC.width/dpr;const maxX=Math.max(A,Math.abs(posX),0.3)*1.15;return(px/W-EQ)/(0.92-EQ)*maxX;}
+const MR=20;
+function getPos(e){const rect=animC.getBoundingClientRect();const dpr=window.devicePixelRatio||1;const scaleX=(animC.width/dpr)/rect.width;const scaleY=(animC.height/dpr)/rect.height;const src=e.touches?e.touches[0]:e;return{x:(src.clientX-rect.left)*scaleX,y:(src.clientY-rect.top)*scaleY};}
+function hitMass(px,py){const dpr=window.devicePixelRatio||1;const W=animC.width/dpr,H=animC.height/dpr;return Math.hypot(px-physToFrac(posX)*W,py-H/2)<MR+14;}
+function onDown(e){const p=getPos(e);if(hitMass(p.x,p.y)){dragging=true;velX=0;prevDragX=p.x;prevDragTime=performance.now();e.preventDefault();}}
+function onMove(e){if(!dragging)return;e.preventDefault();const p=getPos(e);const now=performance.now();const dt=(now-prevDragTime)/1000;const nx=canvasPixToPhys(p.x);const cl=Math.max(A,0.5)*1.1;const cx=Math.max(-cl,Math.min(cl,nx));if(dt>0.001)velX=(cx-posX)/dt;posX=cx;prevDragX=p.x;prevDragTime=now;histX=[];histV=[];histA=[];}
+function onUp(){if(!dragging)return;dragging=false;A=Math.max(Math.abs(posX),0.05);document.getElementById('sl-a').value=A.toFixed(1);document.getElementById('lbl-a').textContent=A.toFixed(1);lastTS=null;histX=[];histV=[];histA=[];}
+animC.addEventListener('mousedown',onDown);animC.addEventListener('mousemove',onMove);animC.addEventListener('mouseup',onUp);animC.addEventListener('mouseleave',onUp);animC.addEventListener('touchstart',onDown,{passive:false});animC.addEventListener('touchmove',onMove,{passive:false});animC.addEventListener('touchend',onUp);
+function physicsStep(dt){if(dragging)return;const w2=omega()*omega(),gm=damping?gamma/m:0;function acc(x,v){return-w2*x-gm*v}const k1v=acc(posX,velX),k1x=velX;const k2v=acc(posX+k1x*dt/2,velX+k1v*dt/2),k2x=velX+k1v*dt/2;const k3v=acc(posX+k2x*dt/2,velX+k2v*dt/2),k3x=velX+k2v*dt/2;const k4v=acc(posX+k3x*dt,velX+k3v*dt),k4x=velX+k3v*dt;posX+=dt/6*(k1x+2*k2x+2*k3x+k4x);velX+=dt/6*(k1v+2*k2v+2*k3v+k4v);}
+function drawSpring(x1f,y,x2f,W){const cx1=x1f*W,cx2=x2f*W,len=cx2-cx1;const n=16,seg=len/n,amp=Math.max(5,13-Math.abs(len-100)*0.05);actx.beginPath();actx.moveTo(cx1,y);for(let i=0;i<n;i++){actx.quadraticCurveTo(cx1+(i+.5)*seg,y+(i%2===0?-1:1)*amp,cx1+(i+1)*seg,y);}actx.strokeStyle=C.spring;actx.lineWidth=2.5;actx.stroke();}
+function drawArrow(ctx,x,y,dx,color,label){if(Math.abs(dx)<2)return;const dir=dx>0?1:-1;ctx.save();ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+dx,y);ctx.stroke();ctx.beginPath();ctx.moveTo(x+dx,y);ctx.lineTo(x+dx-dir*8,y-5);ctx.lineTo(x+dx-dir*8,y+5);ctx.fill();ctx.font='10px system-ui';ctx.fillText(label,x+dx+(dir>0?5:-32),y-6);ctx.restore();}
+function renderAnim(){const dpr=window.devicePixelRatio||1;const W=animC.width/dpr,H=animC.height/dpr;actx.setTransform(dpr,0,0,dpr,0,0);actx.clearRect(0,0,W,H);actx.fillStyle=C.bg;actx.fillRect(0,0,W,H);actx.fillStyle=C.wall;actx.fillRect(0,0,12,H);actx.save();actx.strokeStyle=C.wall;actx.lineWidth=1;for(let y=0;y<H;y+=10){actx.beginPath();actx.moveTo(0,y);actx.lineTo(12,y+8);actx.stroke();}actx.restore();actx.fillStyle=C.axis;actx.fillRect(12,H/2-.5,W-12,1);actx.save();actx.setLineDash([4,4]);actx.strokeStyle=C.axis;actx.lineWidth=1;actx.beginPath();actx.moveTo(EQ*W,14);actx.lineTo(EQ*W,H-14);actx.stroke();actx.restore();actx.font='10px system-ui';actx.fillStyle=C.txt;actx.fillText('x=0',EQ*W-10,12);const mFrac=physToFrac(posX),mX=mFrac*W,mY=H/2;drawSpring(0.05,mY,mFrac-MR/W,W);const F=-k*posX;drawArrow(actx,mX+MR,mY+26,F*2.5,C.force,'F='+F.toFixed(1)+'N');const vShow=dragging?0:velX,vScale=Math.max(A*omega(),1);drawArrow(actx,mX,mY-36,(vShow/vScale)*40,C.vel,'v');if(dragging){actx.save();actx.setLineDash([5,4]);actx.beginPath();actx.arc(mX,mY,MR+6,0,2*Math.PI);actx.strokeStyle=C.massDrag;actx.lineWidth=2;actx.stroke();actx.restore();}actx.save();if(!isDark){actx.shadowBlur=14;actx.shadowColor=C.massHL;}actx.beginPath();actx.arc(mX,mY,MR,0,2*Math.PI);actx.fillStyle=dragging?C.massDrag:C.mass;actx.fill();actx.strokeStyle=dragging?'#F09595':C.massHL;actx.lineWidth=2.5;actx.stroke();actx.restore();actx.font='bold 11px system-ui';actx.fillStyle='#fff';actx.textAlign='center';actx.textBaseline='middle';actx.fillText('m='+m,mX,mY);actx.textAlign='start';actx.textBaseline='alphabetic';if(!dragging){actx.font='13px system-ui';actx.fillStyle='rgba(255,255,255,.55)';actx.textAlign='center';actx.textBaseline='middle';actx.fillText('⇔',mX,mY+MR+11);actx.textAlign='start';actx.textBaseline='alphabetic';}actx.font='11px system-ui';actx.fillStyle=C.txt;actx.fillText('x = '+posX.toFixed(3)+' m',18,H-8);if(dragging){actx.fillStyle=C.massDrag;actx.textAlign='right';actx.fillText('กำลังลาก...',W-8,H-8);actx.textAlign='start';}}
+function drawGraph(id,data,color,yRange){const c=document.getElementById(id);const ctx=c.getContext('2d');const dpr=window.devicePixelRatio||1;const W=c.width/dpr,H=c.height/dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);const zy=H/2;ctx.save();ctx.setLineDash([3,3]);ctx.strokeStyle=C.axis;ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(28,zy);ctx.lineTo(W-3,zy);ctx.stroke();ctx.restore();ctx.strokeStyle=C.axis;ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(28,3);ctx.lineTo(28,H-3);ctx.stroke();ctx.font='9px system-ui';ctx.fillStyle=C.txt;ctx.textAlign='right';ctx.fillText(yRange.toFixed(1),26,10);ctx.fillText((-yRange).toFixed(1),26,H-2);ctx.fillText('0',26,zy+4);ctx.textAlign='start';if(data.length<2)return;ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2;data.forEach((v,i)=>{const px=28+(i/(MAX-1))*(W-32);const py=Math.max(3,Math.min(H-3,zy-(v/yRange)*(H/2-5)));i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);});ctx.stroke();const lv=data[data.length-1];const lpx=28+(data.length-1)/(MAX-1)*(W-32);const lpy=Math.max(3,Math.min(H-3,zy-(lv/yRange)*(H/2-5)));ctx.beginPath();ctx.arc(lpx,lpy,3.5,0,2*Math.PI);ctx.fillStyle=color;ctx.fill();}
+function updateMetrics(x,v,acc){const F=-k*x,KE=.5*m*v*v,PE=.5*k*x*x,E=KE+PE;document.getElementById('val-x').textContent=x.toFixed(3);document.getElementById('val-v').textContent=v.toFixed(3);document.getElementById('val-acc').textContent=acc.toFixed(3);document.getElementById('val-F').textContent=F.toFixed(3);document.getElementById('val-KE').textContent=KE.toFixed(3)+' J';document.getElementById('val-PE').textContent=PE.toFixed(3)+' J';document.getElementById('val-E').textContent=E.toFixed(3)+' J';const maxE=.5*k*Math.max(A,Math.abs(x))**2||1;document.getElementById('bar-KE').style.width=Math.min(100,KE/maxE*100).toFixed(1)+'%';document.getElementById('bar-PE').style.width=Math.min(100,PE/maxE*100).toFixed(1)+'%';}
+function updateConstants(){document.getElementById('val-omega').textContent=omega().toFixed(3);document.getElementById('val-T').textContent=period().toFixed(3);document.getElementById('val-f').textContent=freq().toFixed(3);}
+function loop(ts){requestAnimationFrame(loop);if(!playing&&!dragging){lastTS=null;return;}if(!lastTS)lastTS=ts;const dt=Math.min((ts-lastTS)/1000,.033);lastTS=ts;if(!dragging)physicsStep(dt);const acc=-omega()*omega()*posX;const vShow=dragging?0:velX;histX.push(posX);histV.push(vShow);histA.push(acc);if(histX.length>MAX){histX.shift();histV.shift();histA.shift();}renderAnim();const xR=Math.max(A,Math.abs(posX),.2)*1.2;const vR=Math.max(Math.abs(vShow),A*omega(),.2)*1.2;const aR=Math.max(Math.abs(acc),A*omega()*omega(),.2)*1.2;drawGraph('g-x',histX,'#7F77DD',xR);drawGraph('g-v',histV,'#1D9E75',vR);drawGraph('g-a',histA,'#D85A30',aR);updateMetrics(posX,vShow,acc);}
+function togglePlay(){playing=!playing;const b=document.getElementById('btn-play');b.textContent=playing?'หยุด':'เล่น';b.classList.toggle('active',playing);}
+function resetSim(){posX=A*Math.cos(phi);velX=-A*omega()*Math.sin(phi);histX=[];histV=[];histA=[];lastTS=null;}
+function onParam(p,v){if(p==='m'){m=v;updateConstants();}if(p==='k'){k=v;updateConstants();}if(p==='A')A=v;if(p==='phi')phi=v;if(p==='g')gamma=v;resetSim();}
+document.getElementById('sl-m').oninput=function(){const v=+this.value;document.getElementById('lbl-m').textContent=v.toFixed(1);onParam('m',v);};
+document.getElementById('sl-k').oninput=function(){const v=+this.value;document.getElementById('lbl-k').textContent=v.toFixed(1);onParam('k',v);};
+document.getElementById('sl-a').oninput=function(){const v=+this.value;document.getElementById('lbl-a').textContent=v.toFixed(1);onParam('A',v);};
+document.getElementById('sl-phi').oninput=function(){const v=+this.value;document.getElementById('lbl-phi').textContent=v.toFixed(2);onParam('phi',v);};
+document.getElementById('sl-gamma').oninput=function(){const v=+this.value;document.getElementById('lbl-gamma').textContent=v.toFixed(1);onParam('g',v);};
+document.getElementById('chk-damp').onchange=function(){damping=this.checked;const r=document.getElementById('damp-row');r.style.opacity=damping?'1':'0.4';r.style.pointerEvents=damping?'auto':'none';resetSim();};
+function init(){resizeAll();updateConstants();posX=A*Math.cos(phi);velX=-A*omega()*Math.sin(phi);requestAnimationFrame(loop);}
+const ro=new ResizeObserver(()=>resizeAll());
+ro.observe(animC);ro.observe(document.getElementById('g-x'));
+window.addEventListener('load',init);
+</script>
+</body>
+</html>
